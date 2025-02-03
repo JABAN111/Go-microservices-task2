@@ -13,3 +13,6 @@ run-tests:
 
 test: down up run-tests down
 	@echo "test finished"
+
+lint:
+	make -C petname lint
