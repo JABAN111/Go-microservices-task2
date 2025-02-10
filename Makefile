@@ -11,8 +11,15 @@ down:
 run-tests: 
 	${container_runtime} run --rm --network=host tests:latest
 
-test: down up run-tests down
+test:
+	make down
+	make up
+	make run-tests
+	make down
 	@echo "test finished"
 
 lint:
 	make -C petname lint
+
+proto:
+	make -C petname protobuf
