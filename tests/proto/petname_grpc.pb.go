@@ -20,9 +20,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PetnameGenerator_Ping_FullMethodName         = "/hello.PetnameGenerator/Ping"
-	PetnameGenerator_Generate_FullMethodName     = "/hello.PetnameGenerator/Generate"
-	PetnameGenerator_GenerateMany_FullMethodName = "/hello.PetnameGenerator/GenerateMany"
+	PetnameGenerator_Ping_FullMethodName         = "/petname.PetnameGenerator/Ping"
+	PetnameGenerator_Generate_FullMethodName     = "/petname.PetnameGenerator/Generate"
+	PetnameGenerator_GenerateMany_FullMethodName = "/petname.PetnameGenerator/GenerateMany"
 )
 
 // PetnameGeneratorClient is the client API for PetnameGenerator service.
@@ -187,7 +187,7 @@ type PetnameGenerator_GenerateManyServer = grpc.ServerStreamingServer[PetnameRes
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var PetnameGenerator_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "hello.PetnameGenerator",
+	ServiceName: "petname.PetnameGenerator",
 	HandlerType: (*PetnameGeneratorServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
