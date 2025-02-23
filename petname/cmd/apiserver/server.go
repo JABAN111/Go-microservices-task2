@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os/signal"
 	"syscall"
@@ -32,9 +33,9 @@ func main() {
 	// srv.GracefulShutDown()
 	go shutDownListener(srv, done)
 	if err := srv.Run(); err != nil {
-		log.Error("Server run error", err)
+		log.Error(fmt.Sprintf("Server run error: %s", err.Error()))
 		panic(err) //TODO: handle error
 	}
 
-	<-done // Ждем завершения
+	<-done
 }

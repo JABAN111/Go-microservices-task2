@@ -68,20 +68,19 @@ func (s *grpcServer) Run() error {
 func (s *grpcServer) GracefulShutDown() error {
 	log.Info("Initiating graceful shutdown...")
 
-	// s.flowCtrl.terminateChan <- struct{}{}]
 	s.flowCtrl.terminate.Store(true)
 
-	if s.flowCtrl.cancelFuncs != nil { //TODO:не везде сработает, лучше выпилить
+	if s.flowCtrl.cancelFuncs != nil {
 		for _, f := range s.flowCtrl.cancelFuncs {
 			f()
 		}
 	}
-	// if s.flowCtrl.busy.Load() != 0 {
-	log.Info(fmt.Sprintf("Waiting %d seconds for active streams to finish...", timeout))
-	time.Sleep(timeout)
-	// } else {
-	// log.Info("No active streams, shutting down immediately...")
-	// }
+	if s.flowCtrl.busy.Load() != 0 {
+		log.Info(fmt.Sprintf("Waiting %d seconds for active streams to finish...", timeout))
+		time.Sleep(timeout)
+	} else {
+		log.Info("No active streams, shutting down immediately...")
+	}
 
 	log.Info("Shutting down gRPC server gracefully...")
 	s.grpcSrv.GracefulStop()
