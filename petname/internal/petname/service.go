@@ -38,7 +38,7 @@ func NewNamer() Petnamer {
 }
 
 func (p *petname) GenerateName(words int, separator string) (string, error) {
-	if !IsPositive(words) {
+	if !isValid(words) {
 		return "", &InvalidArgument{Err: fmt.Errorf("all parameters must be positive")}
 	}
 	return generator.Generate(words, separator), nil
@@ -46,7 +46,7 @@ func (p *petname) GenerateName(words int, separator string) (string, error) {
 
 func (p *petname) GenerateMany(ctx context.Context, words int, separator string, names int) (<-chan string, error) {
 	nameChan := make(chan string)
-	if !IsPositive(words, names) {
+	if !isValid(words, names) {
 		return nil, &InvalidArgument{Err: fmt.Errorf("all parameters must be positive")}
 	}
 
@@ -59,13 +59,12 @@ func (p *petname) GenerateMany(ctx context.Context, words int, separator string,
 			case nameChan <- generator.Generate(words, separator):
 			}
 		}
-		log.Debug("End of GenerateMany")
 	}()
-
+	log.Debug("End of GenerateMany")
 	return nameChan, nil
 }
 
-func IsPositive(args ...int) bool {
+func isValid(args ...int) bool {
 	for _, val := range args {
 		if val < 1 {
 			return false

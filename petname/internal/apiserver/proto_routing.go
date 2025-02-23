@@ -34,14 +34,9 @@ func (s *grpcServer) GenerateMany(r *petnamepb.PetnameStreamRequest, stream petn
 
 	ctx, cancel := context.WithTimeout(stream.Context(), s.maxDuration)
 
-	cancelKey := fmt.Sprintf("%p", cancel)
+	cancelKey := fmt.Sprintf("%p", cancel) //TODO: Возможно стоит заменить, потому что могут быть не уникальны?
 	if cancel != nil {
 		s.addCancel(cancelKey, cancel)
-	}
-
-	nameChan, err := namer.GenerateMany(ctx, int(r.Words), r.Separator, int(r.Names))
-	if err != nil { //NOTE: Only custom error(apiserver.InvalidArgument could apear here)
-		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	defer func() {
 		cancel()
@@ -49,25 +44,29 @@ func (s *grpcServer) GenerateMany(r *petnamepb.PetnameStreamRequest, stream petn
 	}()
 	defer s.flowCtrl.busy.Add(-1)
 
+	nameChan, err := namer.GenerateMany(ctx, int(r.Words), r.Separator, int(r.Names))
+	if err != nil { //NOTE: Only custom error(apiserver.InvalidArgument could apear there)
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	for {
 		if s.flowCtrl.terminate.Load() {
 			return status.Error(codes.Aborted, "Server is shutting down...")
 		}
 		select {
-		//NOTE: ctx.Done() вызовется и при отключении пользователя во время ответа
-		// и при условии, что время закончилось
-
+		//NOTE: ctx.Done will be called if user disconnected,
+		// and if DeadLineExceeded => that's why extra validatation there
 		case <-ctx.Done():
 			log.Warn("Context is closed, stopping iteration...")
 			if ctx.Err() == context.DeadlineExceeded {
 				return status.Error(codes.DeadlineExceeded, "Timeout exceeded")
 			}
-			return status.Error(codes.Canceled, "Context cancelled") //NOTE: в случае, если контекст закрыт пользователем
+			return status.Error(codes.Canceled, "Context cancelled")
 
 		case val, ok := <-nameChan:
 			if !ok {
-				log.Info("nameChan is closed, stopping iteration")
-				return nil
+				log.Debug("NameChan is closed, stopping iteration")
+				return status.Error(codes.Unavailable, "Internal exception")
 			}
 			if err := stream.Send(&petnamepb.PetnameResponse{Name: val}); err != nil {
 				log.Error(fmt.Sprintf("failed to send response: %v", err))
@@ -77,19 +76,12 @@ func (s *grpcServer) GenerateMany(r *petnamepb.PetnameStreamRequest, stream petn
 	}
 }
 
-// func (s *grpcServer) addCancelAtomic(c context.CancelFunc) {
-// 	s.flowCtrl.cancelMux.Lock()
-// 	s.flowCtrl.cancel = append(s.flowCtrl.cancel, c)
-// 	s.flowCtrl.cancelMux.Unlock()
-// }
-
 func (s *grpcServer) addCancel(key string, c context.CancelFunc) {
 	s.flowCtrl.cancelMux.Lock()
 	s.flowCtrl.cancelFuncs[key] = c
 	s.flowCtrl.cancelMux.Unlock()
 }
 
-// Функция для удаления CancelFunc из мапы по ключу
 func (s *grpcServer) removeCancel(key string) {
 	s.flowCtrl.cancelMux.Lock()
 	defer s.flowCtrl.cancelMux.Unlock()
@@ -97,12 +89,18 @@ func (s *grpcServer) removeCancel(key string) {
 	delete(s.flowCtrl.cancelFuncs, key)
 }
 
+// TODO:Нужно ли в унарных функциях вообще взаимодействовать с контекстом
+// по крайней мере в нашем случае выглядит лишним 🤔
 func (s *grpcServer) Generate(_ context.Context, r *petnamepb.PetnameRequest) (*petnamepb.PetnameResponse, error) {
 	log.Info(r.String())
 	name, err := namer.GenerateName(int(r.Words), r.Separator)
-	if err != nil { //NOTE: Only custom error(apiserver.InvalidArgument could apear here)
+
+	//NOTE: Only custom error(apiserver.InvalidArgument could apear here)
+	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	return &petnamepb.PetnameResponse{Name: name}, nil //NOTE: fan fact, status.Error(codes.OK, "panic") equal to nil)
+
+	//NOTE: fan fact, status.Error(codes.OK, "panic") equal to nil)
+	return &petnamepb.PetnameResponse{Name: name}, nil
 
 }

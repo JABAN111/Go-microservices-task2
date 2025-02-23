@@ -27,19 +27,18 @@ type ServerManipulator interface {
 type grpcServer struct {
 	petnamepb.UnimplementedPetnameGeneratorServer
 	port        int
-	maxDuration time.Duration //NOTE: in seconds
+	maxDuration time.Duration //NOTE: default in seconds
 	flowCtrl    StreamFlowCtrl
 	grpcSrv     *grpc.Server
 	listener    net.Listener
 }
 
-func CreateServer() *grpcServer {
+func CreateServer(port int) *grpcServer {
 	return &grpcServer{
-		port:        8080, //TODO: сделать конфигурируемым
-		maxDuration: 20 * time.Second,
+		port:        port,
+		maxDuration: timeout,
 		flowCtrl: StreamFlowCtrl{
-			busy: atomic.Int32{},
-
+			busy:        atomic.Int32{},
 			cancelFuncs: make(map[string]context.CancelFunc),
 		},
 		grpcSrv: grpc.NewServer(),
@@ -47,7 +46,7 @@ func CreateServer() *grpcServer {
 }
 
 func (s *grpcServer) Run() error {
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port)) //TODO: сделать конфигурируемым
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port))
 	if err != nil {
 		log.Error(fmt.Sprintf("failed to listen: %v", err))
 		return err
@@ -84,6 +83,6 @@ func (s *grpcServer) GracefulShutDown() error {
 
 	log.Info("Shutting down gRPC server gracefully...")
 	s.grpcSrv.GracefulStop()
-	log.Info("Closed without err...")
+
 	return nil
 }
