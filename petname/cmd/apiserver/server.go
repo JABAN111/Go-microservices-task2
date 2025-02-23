@@ -30,7 +30,7 @@ func main() {
 	done := make(chan bool)
 
 	srv := apiserver.CreateServer()
-	// srv.GracefulShutDown()
+
 	go shutDownListener(srv, done)
 	if err := srv.Run(); err != nil {
 		log.Error(fmt.Sprintf("Server run error: %s", err.Error()))

@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+
 	petname "yadro.com/course/internal/petname"
 	petnamepb "yadro.com/course/proto"
 )
@@ -19,7 +20,7 @@ var (
 
 type StreamFlowCtrl struct {
 	busy        atomic.Int32
-	terminate   atomic.Bool //TODO: а нужен ли тут атомик
+	terminate   atomic.Bool //TODO: а нужен ли тут атомик 🤔
 	cancelMux   sync.Mutex  //NOTE: overkill, but need to control cancel funcs
 	cancelFuncs map[string]context.CancelFunc
 }
@@ -38,7 +39,10 @@ func (s *grpcServer) GenerateMany(r *petnamepb.PetnameStreamRequest, stream petn
 		s.addCancel(cancelKey, cancel)
 	}
 
-	nameChan := namer.GenerateMany(ctx, int(r.Words), r.Separator, int(r.Names))
+	nameChan, err := namer.GenerateMany(ctx, int(r.Words), r.Separator, int(r.Names))
+	if err != nil { //NOTE: Only custom error(apiserver.InvalidArgument could apear here)
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
 	defer func() {
 		cancel()
 		s.removeCancel(cancelKey)
@@ -95,10 +99,10 @@ func (s *grpcServer) removeCancel(key string) {
 
 func (s *grpcServer) Generate(_ context.Context, r *petnamepb.PetnameRequest) (*petnamepb.PetnameResponse, error) {
 	log.Info(r.String())
-	// return nil, status.Error(1, "error")
-	name := namer.GenerateName(int(r.Words), r.Separator)
-	return &petnamepb.PetnameResponse{Name: name}, status.Error(0, "error")
-	// return &petnamepb.PetnameResponse{
-	// Name: name,
-	// }, nil
+	name, err := namer.GenerateName(int(r.Words), r.Separator)
+	if err != nil { //NOTE: Only custom error(apiserver.InvalidArgument could apear here)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	return &petnamepb.PetnameResponse{Name: name}, nil //NOTE: fan fact, status.Error(codes.OK, "panic") equal to nil)
+
 }

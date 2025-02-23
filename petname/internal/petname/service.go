@@ -2,10 +2,19 @@ package l
 
 import (
 	"context"
+	"fmt"
 
 	generator "github.com/dustinkirkland/golang-petname"
 	"yadro.com/course/internal/logger"
 )
+
+type InvalidArgument struct {
+	Err error
+}
+
+func (r *InvalidArgument) Error() string {
+	return fmt.Sprintf("Error has occured: %v", r.Err)
+}
 
 var log = logger.GetInstance()
 
@@ -15,11 +24,11 @@ type Petnamer interface {
 }
 
 type SingleGenerator interface {
-	GenerateName(words int, separator string) string
+	GenerateName(words int, separator string) (string, error)
 }
 
 type StreamGenerator interface {
-	GenerateMany(ctx context.Context, words int, separator string, names int) <-chan string
+	GenerateMany(ctx context.Context, words int, separator string, names int) (<-chan string, error)
 }
 
 type petname struct{}
@@ -28,12 +37,18 @@ func NewNamer() Petnamer {
 	return &petname{}
 }
 
-func (p *petname) GenerateName(words int, separator string) string {
-	return generator.Generate(words, separator)
+func (p *petname) GenerateName(words int, separator string) (string, error) {
+	if !IsPositive(words) {
+		return "", &InvalidArgument{Err: fmt.Errorf("all parameters must be positive")}
+	}
+	return generator.Generate(words, separator), nil
 }
 
-func (p *petname) GenerateMany(ctx context.Context, words int, separator string, names int) <-chan string {
+func (p *petname) GenerateMany(ctx context.Context, words int, separator string, names int) (<-chan string, error) {
 	nameChan := make(chan string)
+	if !IsPositive(words, names) {
+		return nil, &InvalidArgument{Err: fmt.Errorf("all parameters must be positive")}
+	}
 
 	go func() {
 		defer close(nameChan)
@@ -41,11 +56,20 @@ func (p *petname) GenerateMany(ctx context.Context, words int, separator string,
 			select {
 			case <-ctx.Done():
 				return
-			case nameChan <- p.GenerateName(words, separator):
+			case nameChan <- generator.Generate(words, separator):
 			}
 		}
 		log.Debug("End of GenerateMany")
 	}()
 
-	return nameChan
+	return nameChan, nil
+}
+
+func IsPositive(args ...int) bool {
+	for _, val := range args {
+		if val < 1 {
+			return false
+		}
+	}
+	return true
 }
