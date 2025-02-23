@@ -13,7 +13,7 @@ var (
 )
 
 const (
-	//в чистом виде баловство)
+	//NOTE: в чистом виде баловство)
 	envDev  = "dev"
 	envProd = "prod"
 )

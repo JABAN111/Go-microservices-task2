@@ -36,20 +36,15 @@ func (p *petname) GenerateMany(ctx context.Context, words int, separator string,
 	nameChan := make(chan string)
 
 	go func() {
-		defer func() {
-			log.Debug("Closing nameChan") //TODO: remove
-			close(nameChan)
-		}()
-
+		defer close(nameChan)
 		for range names {
 			select {
 			case <-ctx.Done():
-				log.Debug("Context is closing for range")
 				return
 			case nameChan <- p.GenerateName(words, separator):
 			}
 		}
-		log.Debug("End of GenerateMany") //TODO: remove
+		log.Debug("End of GenerateMany")
 	}()
 
 	return nameChan

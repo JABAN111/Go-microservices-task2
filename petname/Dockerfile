@@ -5,7 +5,7 @@ RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 ENV PATH="$PATH:$(go env GOPATH)/bin"
 
-COPY go.mod go.sum server.go /src/
+COPY . /src/
 COPY proto /src/proto
 
 RUN cd /src && \
@@ -14,8 +14,10 @@ RUN cd /src && \
            proto/petname.proto
 
 
+WORKDIR /src/cmd/apiserver
+
 ENV CGO_ENABLED=0
-RUN cd /src && go build -o /petname server.go
+RUN go build -o /petname server.go
 
 FROM alpine:3.20
 
