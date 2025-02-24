@@ -66,7 +66,7 @@ func (s *grpcServer) GenerateMany(r *petnamepb.PetnameStreamRequest, stream petn
 		case val, ok := <-nameChan:
 			if !ok {
 				log.Debug("NameChan is closed, stopping iteration")
-				return status.Error(codes.Unavailable, "Internal exception")
+				return nil
 			}
 			if err := stream.Send(&petnamepb.PetnameResponse{Name: val}); err != nil {
 				log.Error(fmt.Sprintf("failed to send response: %v", err))

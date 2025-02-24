@@ -17,7 +17,7 @@ var (
 	log = logger.GetInstance()
 )
 
-const timeout = 10 * time.Second
+const timeout = time.Minute
 
 type ServerManipulator interface {
 	Run() error
